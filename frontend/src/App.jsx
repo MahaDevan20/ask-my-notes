@@ -6,8 +6,9 @@ const API = "http://localhost:8000";
 // Turns the sources into short text, like "rules.pdf p.2"
 function showSources(sources) {
   const names = sources.map((s) => `${s.source} p.${s.page}`);
-  return [...new Set(names)].join(" · ")
+  return [...new Set(names)].join(" · ");
 }
+
 function App() {
   // The app's memory
   const [question, setQuestion] = useState("");
@@ -18,8 +19,9 @@ function App() {
   function addMessage(msg) {
     setMessages((old) => [...old, msg]);
   }
+
   async function askQuestion() {
-    if (!question.trim()) return;
+    if (!question.trim() || loading) return;
     const myQuestion = question;
     addMessage({ role: "user", text: myQuestion });
     setQuestion("");
@@ -38,22 +40,55 @@ function App() {
     }
     setLoading(false);
   }
+
+  async function uploadPdf(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    const form = new FormData();
+    form.append("file", file);
+    setLoading(true);
+    try {
+      const res = await fetch(`${API}/upload`, { method: "POST", body: form });
+      if (!res.ok) throw new Error("Upload error");
+      const data = await res.json();
+      addMessage({ role: "bot", text: data.message });
+    } catch {
+      addMessage({ role: "bot", text: "Upload failed. Try again." });
+    }
+    setLoading(false);
+    e.target.value = ""; // lets you upload the same file again
+  }
+
   return (
     <div className="app">
       <h1>📚 Ask My Notes</h1>
+
       <div className="chat">
         {messages.length === 0 && (
-          <p className="hint">Ask anything about your notes 👇</p>
+          <p className="hint">Upload a PDF, then ask anything about your notes 👇</p>
         )}
         {messages.map((m, i) => (
           <div key={i} className={`msg ${m.role}`}>
             <p>{m.text}</p>
-            {m.sources && <small>📄 {showSources(m.sources)}</small>}
+            {m.sources && m.sources.length > 0 && (
+              <small>📄 {showSources(m.sources)}</small>
+            )}
           </div>
         ))}
         {loading && <div className="msg bot">Thinking… 🤔</div>}
       </div>
+
       <div className="ask-box">
+        <label
+          className="upload"
+          style={{
+            opacity: loading ? 0.5 : 1,
+            pointerEvents: loading ? "none" : "auto",
+          }}
+        >
+          📎 PDF
+          <input type="file" accept=".pdf" hidden onChange={uploadPdf} />
+        </label>
         <input
           value={question}
           onChange={(e) => setQuestion(e.target.value)}
