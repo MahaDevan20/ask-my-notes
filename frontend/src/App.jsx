@@ -1,10 +1,11 @@
 import { useState } from "react";
 import "./App.css";
-
-const API = "http://localhost:8000";
+import Voice from "./Voice";
+const API = "/api";
 
 // Turns the sources into short text, like "rules.pdf p.2"
 function showSources(sources) {
+  if (!sources || !Array.isArray(sources)) return "";
   const names = sources.map((s) => `${s.source} p.${s.page}`);
   return [...new Set(names)].join(" · ");
 }
@@ -14,6 +15,8 @@ function App() {
   const [question, setQuestion] = useState("");
   const [messages, setMessages] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [agentMode, setAgentMode] = useState(false);
+
 
   // Adds one message to the chat
   function addMessage(msg) {
@@ -27,14 +30,14 @@ function App() {
     setQuestion("");
     setLoading(true);
     try {
-      const res = await fetch(`${API}/ask`, {
+       const res = await fetch(`${API}/${agentMode ? "agent" : "ask"}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ question: myQuestion }),
       });
       if (!res.ok) throw new Error("Server error");
       const data = await res.json();
-      addMessage({ role: "bot", text: data.answer, sources: data.sources });
+      addMessage({ role: "bot", text: data.answer, sources: data.sources || [], steps: data.steps || [] });
     } catch {
       addMessage({ role: "bot", text: "Oops! Is the backend running?" });
     }
@@ -61,7 +64,16 @@ function App() {
 
   return (
     <div className="app">
-      <h1>📚 Ask My Notes</h1>
+            <h1>📚 Ask My Notes</h1>
+      <div className="top">
+        <label className="mode">
+          <input type="checkbox" checked={agentMode}
+            onChange={(e) => setAgentMode(e.target.checked)} />
+          🤖 Agent mode
+        </label>
+        
+      </div>
+
 
       <div className="chat">
         {messages.length === 0 && (
@@ -69,10 +81,10 @@ function App() {
         )}
         {messages.map((m, i) => (
           <div key={i} className={`msg ${m.role}`}>
-            <p>{m.text}</p>
-            {m.sources && m.sources.length > 0 && (
-              <small>📄 {showSources(m.sources)}</small>
-            )}
+            <p>{m.text || ""}</p>
+            {m.sources && <small>📄 {showSources(m.sources)}</small>}
+            {m.steps?.length > 0 && <small>🛠 {m.steps.join(" → ")}</small>}
+
           </div>
         ))}
         {loading && <div className="msg bot">Thinking… 🤔</div>}
@@ -89,6 +101,7 @@ function App() {
           📎 PDF
           <input type="file" accept=".pdf" hidden onChange={uploadPdf} />
         </label>
+        <Voice />
         <input
           value={question}
           onChange={(e) => setQuestion(e.target.value)}
@@ -104,3 +117,5 @@ function App() {
 }
 
 export default App;
+
+// addMessage({ role: "bot", text: data.answer, sources: data.sources });
