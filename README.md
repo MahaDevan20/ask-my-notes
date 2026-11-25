@@ -1,5 +1,5 @@
 # Ask My Notes
-
+==================
 A RAG-powered study assistant that lets you upload PDF notes and ask questions about them. Includes a React frontend, FastAPI backend, optional voice agent, and LangGraph/LangChain agent options.
 
 ## Project Structure
